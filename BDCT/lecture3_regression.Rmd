@@ -1,7 +1,5 @@
 ---
 title: "BDCT - Lecture 3"
-author: ''
-date: ''
 output: html_document
 ---
 
@@ -9,110 +7,213 @@ output: html_document
 
 R is one of the most comprehensive and widely used programming language. It has a powerful statistical and graphics package. It allows processing large scale data, and hence can be used for ``big-data'' applications. 
 
-# Lecture 3 - Pregnancy example
+## Lecture 3 - Pregnancy example
 
-In this tutorial, we will revisit the pregnancy example that was part of the exercise sheet using R. Using a series of fairly simple (and intuitive code), we will perform a regression using the same set of features to predict if the customer is pregnant or not.
+In this tutorial, we will revisit the pregnancy example that was part of the exercise sheet using R. Using a series of fairly simple (and intuitive code) that we will perform a regression using the same set of features that we saw in class. It assumes no knowledge of programming. 
+
+The question is to predict if the customer is pregnant or not. We go over each command in the program, and explain what it does. For your refernce, the entire program is also given at the end of this document. After each chunk of code, you also see the output that is produced on running them.
 
 ## Reading the Excel file
 
-In the first step, we will read the Excel file workbook in to R. Here we store the name of the file where I have it locally. The initialization in R is done using "<-". We then call a R package that would allow me to read the excel file. 
+In the first step, we will read the Excel file workbook in to R. We initialize the name of the file as it exists locally. The initialization in R is done using "<-". We then call a R package _library(xlsx)_ that would allow one read the excel file. The variable _DIRNAME_ stores the directory, and _XLFILENAME_ contains the file name in which the excel file is on my computer.
 
 ```{r message = FALSE, fig.width = 6, fig.height = 3, fig.align = 'center'}
-FILENAME <- "/Users/rvijayaraghavan/Desktop/rajesh/Personal/Teaching/DataDrivenSrikantClass/03 Assignment Workbook - Regression_10-6.xlsx"
 
+DIRNAME <- "/Users/rvijayaraghavan/Desktop/rajesh/Personal/Teaching/DataDrivenSrikantClass/"
+XLFILENAME <- "03 Assignment Workbook - Regression_10-6.xlsx"
+FILENAME <- paste0(DIRNAME,XLFILENAME)
 library(xlsx)
+
 ```
+
 Then we read the file in to R using the following command. Note, we also specify the sheet name of where R has to look for. Variations of these commands can be used to read csv, xls, etc. 
 
 ```{r}
+
 lecture3data <- read.xlsx(FILENAME, sheetName="Training Data")
+
 ```
-At this point, we have the entire data set in R. We have it as an R variable/object. See on the right you can see the variables that was loaded. To see the number of rows in the object, use the following command in R.
+
+At this point, we have the entire data set in R. We have it as an R variable/object called _lecture3data_. On the right you can see the variables that was loaded. To see the number of rows in the object, use the following command in R.
+
 ```{r}
-nrow(lecture3data)
-ncol(lecture3data)
+
+nrow(lecture3data) # Number of rows in the dataset
+ncol(lecture3data) # Number of columns in the dataset
+
 ```
+
 To see the column names of the data that was loaded, use:
+
 ```{r}
-names(lecture3data)
+
+names(lecture3data) #To see all feature names, i.e., column names. 
+
 ```
 
 ## Creating Dummy Variables
 
-As a next step, we create dummy variables for Female, Male, Home, and Apt. We use the the \texttt{ifelse} command for these operations. For e.g., in the code below, we take the R variable ``Implied.Gender'' and see if it is equal to ``F''. If the condition is TRUE, we create a new variable ``Female'' as 1. If the condition is FALSE, we set it as 0. 
+As a next step, we create dummy variables for _Female, Male, Home, and Apt_. We use the the _ifelse_ command for these operations. For e.g., in the code below, we take the R variable _Implied.Gender_ and see if it is equal to _F_. If the condition is _TRUE_, we create a new variable _Female_ with value set to 1. If the condition is _FALSE_, we set it as 0. 
 
 ```{r}
+
 lecture3data$Female <- ifelse(lecture3data$Implied.Gender == "F", 1, 0)
+
 ```
-Similarly, we create the dummy variables:
+
+Similarly, we create the other dummy variables:
+
 ```{r}
+
 lecture3data$Male <- ifelse(lecture3data$Implied.Gender == "M", 1, 0)
 lecture3data$Home <- ifelse(lecture3data$Home.Apt..PO.Box == "H", 1, 0)
 lecture3data$Apt <- ifelse(lecture3data$Home.Apt..PO.Box == "A", 1,0)
+
 ```
-Now, to see if these dummy variablees have been created look at the number of columns again. It must be four more. 
+
+Now, to verify if these dummy variablees have been created let us look at the number of columns again. It must be four more. 
+
 ```{r}
+
 ncol(lecture3data)
+
 ```
 
-# Regression
+## Regression
 
-The function to regress a variable X on Y in R is \texttt{lm()}.The \texttt{dataset} is the R object where you load the data as in the \texttt{lecture3dataset}.
+The function to regress a variable X on Y in R is _lm()_.The _dataset_ is the R object where you load the data as in the _lecture3dataset_.
+
 ```{r eval = FALSE}
-reg.model <- lm(Y ~ X, data = dataset)
-```
-In the case above, the output of the regression is stored in the variable \texttt{reg.model} that could be used for further analysis.
 
-Applying this to our pregnancy data, Y is the variable \texttt{PREGNANT}, and X is the vector of other features that were used. 
+reg.model <- lm(Y ~ X, data = dataset)
+
+```
+
+In the case above, the output of the regression is stored in the variable _reg.model_ that could be used for further analysis.
+
+Applying this to our pregnancy data, Y is the variable _PREGNANT_, and X is the vector of other features that were used. 
 
 ## Specification 1
-In the regression code below, we perform the same regression as was done in the Excel sheet. The output of the regression is stored in the variable \texttt{reg.model}.
+
+In the regression code below, we perform the same regression as was done in the Excel sheet. The output of the regression is stored in the variable _reg.model_.
+
 ```{r}
+
 reg.model <- lm(PREGNANT ~ Female + Male + Home + Apt + Pregnancy.Test + Birth.Control 
                 + Feminine.Hygiene  +  Folic.Acid + Prenatal.Vitamins + Prenatal.Yoga + 
                   Body.Pillow + Ginger.Ale + Sea.Bands + Stopped.buying.ciggies + 
                   Cigarettes + Smoking.Cessation + Stopped.buying.wine + 
                   Wine + Maternity.Clothes, data = lecture3data)
+
 ```
-Now to see the output of the regression from above, use the \texttt{summary} command.
+
+Now to see the output of the regression from above, use the _summary_ command. This shows all statistics that can be used to analyze the model.
+
 ```{r}
+
 summary(reg.model) #summary of the regression model
+
 ```
-To look for other statistics.
+
+To look for more specific statistics, 
+
+
 ```{r}
+
 coefficients(reg.model) # To get the model coefficients
 fit <- fitted(reg.model) # To get the predicted values
 res <- residuals(reg.model) # To obtain the residuals
+
 ```
 
-# Plotting the predicted values
+## Plotting the predicted values
 
-Finally we plot the predicted values from our regression model. 
+Finally, we plot the predicted values from our regression model. 
 
 ```{r}
+
 plot(fit) ## Notice the difference.
 fit <- sort(fit) ## We sort by the values.
 plot(fit) ## store it in fit again.
+
 ```
 
-# Specification 2
+## Specification 2
 
-Note that of you look on the regression formula in Specification 1, there were lot of variables one had to type in. In our case there were $17$ covariates, so we had to type the variables in the formula. 
+Note that of you look on the regression formula in Specification 1, there were lot of variables one had to type in. In our case there were $17$ covariates, so we had to type each of the variables in the formula. 
 
-R allows for a more cleaner approach as below. In this case you tell R to remove the covariates that you do not want to be included from the data set you provide. 
+R allows for a more cleaner approach. We can program in R to remove the covariates that you do-not want to be included from the data set you provide. 
 
 ```{r fig.width = 6, fig.height = 3, fig.align = 'center'}
+
 reg.model <- lm(PREGNANT ~ . -Implied.Gender -Home.Apt..PO.Box , data=lecture3data)
-```
-You will find the two approaches are identical if you run the \texttt{summary(reg.model)} command to get the results. 
 
-# Other Specifications
-
-```{r fig.width = 6, fig.height = 3, fig.align = 'center'}
-reg.model <- lm(PREGNANT ~ factor(Implied.Gender) + factor(Home.Apt..PO.Box) + Pregnancy.Test + Birth.Control + 
-                  Feminine.Hygiene  + Folic.Acid + Prenatal.Vitamins + Prenatal.Yoga + Body.Pillow + Ginger.Ale + 
-                  Sea.Bands + Stopped.buying.ciggies + Cigarettes + Smoking.Cessation + Stopped.buying.wine + Wine 
-                  + Maternity.Clothes, data = lecture3data)
 ```
 
+You will find the results from the two approaches are identical if you run the _summary(reg.model)_ command to get the results. 
 
+## Other Specifications
+
+R also allows you to call features that are categorical using the _factor_ command. This will treat each value of _Implied.Gender_ and _Home.Apt..PO.Box_ as a categorical variable. The results from this model would be close to the original model that you ran. The difference is due to the fact in terms of how the missing data is handled in both cases. 
+
+```{r fig.width = 6, fig.height = 10}
+
+reg.model <- lm(PREGNANT ~ factor(Implied.Gender) + factor(Home.Apt..PO.Box) + 
+                  Pregnancy.Test + Birth.Control + Feminine.Hygiene  + Folic.Acid + 
+                  Prenatal.Vitamins + Prenatal.Yoga + Body.Pillow + Ginger.Ale + 
+                  Sea.Bands + Stopped.buying.ciggies + Cigarettes + Smoking.Cessation + 
+                  Stopped.buying.wine + Wine + Maternity.Clothes, data = lecture3data)
+
+```
+
+# Full code
+
+Here is the full code of the program above combined. 
+
+```{r eval = FALSE}
+
+DIRNAME <- "/Users/rvijayaraghavan/Desktop/rajesh/Personal/Teaching/DataDrivenSrikantClass/"
+XLFILENAME <- "03 Assignment Workbook - Regression_10-6.xlsx"
+FILENAME <- paste0(DIRNAME,XLFILENAME)
+library(xlsx)
+
+lecture3data <- read.xlsx(FILENAME, sheetName="Training Data")
+
+nrow(lecture3data) # Number of rows in the dataset
+ncol(lecture3data) # Number of columns in the dataset
+
+names(lecture3data) #To see all feature names, i.e., column names. 
+
+lecture3data$Female <- ifelse(lecture3data$Implied.Gender == "F", 1, 0)
+
+lecture3data$Male <- ifelse(lecture3data$Implied.Gender == "M", 1, 0)
+lecture3data$Home <- ifelse(lecture3data$Home.Apt..PO.Box == "H", 1, 0)
+lecture3data$Apt <- ifelse(lecture3data$Home.Apt..PO.Box == "A", 1,0)
+
+ncol(lecture3data)
+
+reg.model <- lm(PREGNANT ~ Female + Male + Home + Apt + Pregnancy.Test + Birth.Control 
+                + Feminine.Hygiene  +  Folic.Acid + Prenatal.Vitamins + Prenatal.Yoga + 
+                  Body.Pillow + Ginger.Ale + Sea.Bands + Stopped.buying.ciggies + 
+                  Cigarettes + Smoking.Cessation + Stopped.buying.wine + 
+                  Wine + Maternity.Clothes, data = lecture3data)
+
+summary(reg.model) #summary of the regression model
+
+coefficients(reg.model) # To get the model coefficients
+fit <- fitted(reg.model) # To get the predicted values
+res <- residuals(reg.model) # To obtain the residuals
+
+plot(fit) ## Notice the difference.
+fit <- sort(fit) ## We sort by the values.
+plot(fit) ## store it in fit again.
+
+reg.model <- lm(PREGNANT ~ . -Implied.Gender -Home.Apt..PO.Box , data=lecture3data)
+
+reg.model <- lm(PREGNANT ~ factor(Implied.Gender) + factor(Home.Apt..PO.Box) + 
+                  Pregnancy.Test + Birth.Control + Feminine.Hygiene  + Folic.Acid + 
+                  Prenatal.Vitamins + Prenatal.Yoga + Body.Pillow + Ginger.Ale + 
+                  Sea.Bands + Stopped.buying.ciggies + Cigarettes + Smoking.Cessation + 
+                  Stopped.buying.wine + Wine + Maternity.Clothes, data = lecture3data)
+
+```
