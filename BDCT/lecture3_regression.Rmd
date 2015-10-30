@@ -1,21 +1,25 @@
 ---
 title: "BDCT - Lecture 3"
-output: html_document
+output: pdf_document
 ---
+
 
 # Regression in R
 
+
 R is one of the most comprehensive and widely used programming language. It has a powerful statistical and graphics package. It allows processing large scale data, and hence can be used for ``big-data'' applications. 
+
 
 ## Lecture 3 - Pregnancy example
 
-In this tutorial, we will revisit the pregnancy example that was part of the exercise sheet using R. Using a series of fairly simple (and intuitive code) that we will perform a regression using the same set of features that we saw in class. It assumes no knowledge of programming. 
 
-The question is to predict if the customer is pregnant or not. We go over each command in the program, and explain what it does. For your refernce, the entire program is also given at the end of this document. After each chunk of code, you also see the output that is produced on running them.
+In this tutorial, we will revisit the pregnancy example that was part of the exercise sheet using R. Using a series of fairly simple (and intuitive code) that we will perform a regression using the same set of features that we saw in class. It assumes no knowledge of programming. First we perform the regression using OLS, and then repeat the analysis with logit regression.
+
+The question is to predict if the customer is pregnant or not based on the Data Smart book. We go over each command in the program, and explain what it does. For your refernce, the entire program is also given at the end of this document. After each chunk of code, you also see the output that is produced on running them.
 
 ## Reading the Excel file
 
-In the first step, we will read the Excel file workbook in to R. We initialize the name of the file as it exists locally. The initialization in R is done using "<-". We then call a R package _library(xlsx)_ that would allow one read the excel file. The variable _DIRNAME_ stores the directory, and _XLFILENAME_ contains the file name in which the excel file is on my computer.
+In the first step, we will read the Excel file workbook in to R. We initialize the name of the file as it exists locally. The initialization in R is done using "<-". When ever you see that, think of it that the value or the calculation that is performed on the right of the "<-" is assigned to the variable on the left. We then call a R package _library(xlsx)_ that would allow one read the excel file. The variable _DIRNAME_ stores the directory, and _XLFILENAME_ contains the file name in which the excel file is on my computer.
 
 ```{r message = FALSE, fig.width = 6, fig.height = 3, fig.align = 'center'}
 
@@ -66,6 +70,7 @@ Similarly, we create the other dummy variables:
 ```{r}
 
 lecture3data$Male <- ifelse(lecture3data$Implied.Gender == "M", 1, 0)
+lecture3data$Female <- ifelse(lecture3data$Implied.Gender == "F", 1, 0)
 lecture3data$Home <- ifelse(lecture3data$Home.Apt..PO.Box == "H", 1, 0)
 lecture3data$Apt <- ifelse(lecture3data$Home.Apt..PO.Box == "A", 1,0)
 
@@ -166,6 +171,43 @@ reg.model <- lm(PREGNANT ~ factor(Implied.Gender) + factor(Home.Apt..PO.Box) +
 
 ```
 
+# Running Logistic regression in R
+
+The above regression you performed uses Ordinary least square technique. Now, let us repeat the analysis using the logistic regression. As you would see, the key difference in running in R is using the command _glm()_ instead of _lm()_.
+
+```{r fig.width = 6, fig.height = 10}
+
+logit.reg.model <- glm(PREGNANT ~ Female + Male + Home + Apt + Pregnancy.Test + Birth.Control 
+                + Feminine.Hygiene  +  Folic.Acid + Prenatal.Vitamins + Prenatal.Yoga + 
+                  Body.Pillow + Ginger.Ale + Sea.Bands + Stopped.buying.ciggies + 
+                  Cigarettes + Smoking.Cessation + Stopped.buying.wine + 
+                  Wine + Maternity.Clothes, family="binomial", data = lecture3data)
+
+```
+
+Now let us calculate the summary, fit and the residuals.
+
+```{r}
+
+summary(logit.reg.model) #summary from the regression values
+fitlogit <- fitted(logit.reg.model) #To get the predicted values
+reslogit <- residuals(logit.reg.model) #To obtain the residuals
+
+```
+
+Finally, let us do the plot. Notice the contrast with OLS, where the predicted values were greater than zero and were not very easily interpretable in terms of the likelihood or probability of being pregnant. See further discussion of it on the class slides on Regression and also in the critical thinking questions section in it. 
+
+Logit regression gets round those issues. The predicted values in logit regression are always $<=$ $1$. So this model is preferred when the outcome value is binary in nature -- such as pregnant or not pregnant ($1/0$).
+
+
+```{r}
+
+plot(fitlogit) ## Notice the difference.
+fitlogit <- sort(fitlogit) ## We sort by the values.
+plot(fitlogit) ## store it in fit again.
+
+```
+
 # Full code
 
 Here is the full code of the program above combined. 
@@ -215,5 +257,21 @@ reg.model <- lm(PREGNANT ~ factor(Implied.Gender) + factor(Home.Apt..PO.Box) +
                   Prenatal.Vitamins + Prenatal.Yoga + Body.Pillow + Ginger.Ale + 
                   Sea.Bands + Stopped.buying.ciggies + Cigarettes + Smoking.Cessation + 
                   Stopped.buying.wine + Wine + Maternity.Clothes, data = lecture3data)
+
+# Logistic regression
+
+logit.reg.model <- glm(PREGNANT ~ Female + Male + Home + Apt + Pregnancy.Test + Birth.Control 
+                + Feminine.Hygiene  +  Folic.Acid + Prenatal.Vitamins + Prenatal.Yoga + 
+                  Body.Pillow + Ginger.Ale + Sea.Bands + Stopped.buying.ciggies + 
+                  Cigarettes + Smoking.Cessation + Stopped.buying.wine + 
+                  Wine + Maternity.Clothes, family="binomial", data = lecture3data)
+
+summary(logit.reg.model) #summary from the regression values
+fitlogit <- fitted(logit.reg.model) #To get the predicted values
+reslogit <- residuals(logit.reg.model) #To obtain the residuals
+
+plot(fitlogit) ## Notice the difference.
+fitlogit <- sort(fitlogit) ## We sort by the values.
+plot(fitlogit) ## store it in fit again.
 
 ```

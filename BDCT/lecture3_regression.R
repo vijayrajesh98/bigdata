@@ -41,3 +41,20 @@ reg.model <- lm(PREGNANT ~ factor(Implied.Gender) + factor(Home.Apt..PO.Box) +
                   Prenatal.Vitamins + Prenatal.Yoga + Body.Pillow + Ginger.Ale + 
                   Sea.Bands + Stopped.buying.ciggies + Cigarettes + Smoking.Cessation + 
                   Stopped.buying.wine + Wine + Maternity.Clothes, data = lecture3data)
+
+# Logistic regression
+
+logit.reg.model <- glm(PREGNANT ~ Female + Male + Home + Apt + Pregnancy.Test + Birth.Control 
+                       + Feminine.Hygiene  +  Folic.Acid + Prenatal.Vitamins + Prenatal.Yoga + 
+                         Body.Pillow + Ginger.Ale + Sea.Bands + Stopped.buying.ciggies + 
+                         Cigarettes + Smoking.Cessation + Stopped.buying.wine + 
+                         Wine + Maternity.Clothes, family="binomial", data = lecture3data)
+
+summary(logit.reg.model) #summary from the regression values
+fitlogit <- fitted(logit.reg.model) #To get the predicted values
+reslogit <- residuals(logit.reg.model) #To obtain the residuals
+
+plot(fitlogit) ## Notice the difference.
+fitlogit <- sort(fitlogit) ## We sort by the values.
+plot(fitlogit) ## store it in fit again.
+
