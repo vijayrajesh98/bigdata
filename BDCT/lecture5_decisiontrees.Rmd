@@ -1,0 +1,214 @@
+---
+title: "BDCT - Lecture 5"
+output: pdf_document
+---
+
+
+# Decision trees using R
+
+This tutorial will be an introduction to construct decision trees in R. We will follow series of commands that constitute the program, that would construct the tree. It builds on the same data set used in the regression programming exercise -- pregnancy. We will also touch upon using packages in R.
+
+
+## Lecture 5 - Pregnancy example revisited
+
+We will revisit the pregnancy example that was part of the exercise sheet using R. We will use the same set of features to construct a tree. It builds on a R package _rpart_ for the purpose.
+
+The question is to predict if the customer is pregnant or not that would involve a series of nodes where decisions are made. We go over each command in the program, and use the following steps while programming:
+
+* Construct a tree based on the input data.
+* Display the splits from the tree.
+* Visualize the results of the tree.
+
+For your reference, the entire program is also given at the end of this document. After each chunk of code, you also see the output that is produced on running them.
+
+## Loading Packages in R
+
+R, by default, comes with many of the standard packages. Packages are collection of functions in R that are stored in what is referred to a library. There are many other packages available that would need to be initially downloaded and installed in the machine through some simple commands. Once they are installed, they would need to be loaded into the session to use it. These packages increase the statistical capacity of R, and also is an active part of the open source programming community through [CRAN](https://cran.r-project.org/web/packages/).
+
+To load the packages to create a tree with our dataset, we first load the package _rpart_, and _xlsx_. If the packages are not currently installed in the machine, run the following code. Note that we used _xlsx_ earlier to load an Excel file in to R.
+
+```{r eval = FALSE}
+
+install.packages("xlsx")
+install.packages("rpart")
+
+```
+
+If the packages are already installed, then load them in R using. Note, even if you have installed the package earlier, it would need to be loaded in order to use its functions.
+
+```{r}
+
+library(xlsx) #Loading the package needed to read Excel file
+library(rpart) #Loading the package needed to construct and prune trees
+
+```
+
+## Reading the Excel file
+
+We read the Excel data that was provided into the data frame _lecture5data_ . The variable name _DIRNAME_ stores the directory, and _XLFILENAME_ contains the file name in which the excel file is on my computer. The variable _FILENAME_ stores the name of the absolute file name.
+
+```{r}
+
+DIRNAME <- "/Users/rvijayaraghavan/Desktop/rajesh/Personal/Teaching/DataDrivenSrikantClass/"
+XLFILENAME <- "03 Assignment Workbook - Regression_10-6.xlsx"
+FILENAME <- paste0(DIRNAME,XLFILENAME)
+lecture5data <- read.xlsx(FILENAME, sheetName="Training Data")
+
+```
+
+Next, we create the dummy variables as we did in lecture 3:
+
+```{r}
+
+lecture5data$Male <- ifelse(lecture5data$Implied.Gender == "M", 1, 0)
+lecture5data$Female <- ifelse(lecture5data$Implied.Gender == "F", 1, 0)
+lecture5data$Home <- ifelse(lecture5data$Home.Apt..PO.Box == "H", 1, 0)
+lecture5data$Apt <- ifelse(lecture5data$Home.Apt..PO.Box == "A", 1,0)
+
+```
+
+## Constructing the Tree
+
+To contruct the tree, the R code is similar to that of regression. The command used is _rpart()_, with the outcome variable _PREGNANT_ along with the same set of features used in regression. The argument _method =  "class"_  in the rpart function specifies that we are interested in constructing a classification tree. The _rpart_ uses the recursive partitioning algorithm while parsing the tree. The output is generated in the variable _fit_.
+
+For simplicity, we will first begin with an example using just four features that could potential predict if some one is pregnant or not.
+
+```{r}
+
+fit <- rpart(PREGNANT ~ Birth.Control + Feminine.Hygiene  +  Folic.Acid + Prenatal.Vitamins ,
+    method="class", data=lecture5data)
+
+```
+
+R at this point stores the tree that was created.
+
+
+## Displaying the results
+
+Once the above command is run, the output is stored in the variable _fit_. The following commands are used to display the results, and then to visualize the results from the tree generated using _rpart_. The cross validation results help in choosing the tree size that minimizes the cross validated error -- that is displayed in the _xerror_ column.
+
+```{r}
+
+printcp(fit) # display the results 
+plotcp(fit) # visualize cross-validation results 
+
+```
+
+The command _summary_ provides the summary of the tree along with the splits.  
+
+```{r}
+
+summary(fit) # detailed summary of splits
+
+```
+
+The above commands show number of statistic in understanding how the tree was constructed, and about their splits. They also show ratios that could be used to calculate the probabilities while estimating their entropies.
+
+
+As the next step, to visualize the tree, we use the _plot()_ function. This takes the output _fit_ that was run in the previous step and plots the tree that was created. 
+
+```{r}
+
+# plot tree 
+plot(fit, uniform=TRUE, main="Pregnancy Decision Tree")
+text(fit, use.n=TRUE, all=TRUE, cex=.8)
+
+```
+
+In the first step, we use four features to construct a tree and understand which features have the highest entropy. We will now proceed to include all the features from the dataset. 
+
+## Analysis with all features
+
+Now revisit the example with all the features. We will now construct a tree to include all the features, including the four that we used in the prior step. 
+
+```{r}
+
+fit <- rpart(PREGNANT ~ Female + Male + Home + Apt + Pregnancy.Test + Birth.Control 
+                + Feminine.Hygiene  +  Folic.Acid + Prenatal.Vitamins + Prenatal.Yoga + 
+                  Body.Pillow + Ginger.Ale + Sea.Bands + Stopped.buying.ciggies + 
+                  Cigarettes + Smoking.Cessation + Stopped.buying.wine + 
+                  Wine + Maternity.Clothes,
+    method="class", data=lecture5data)
+
+```
+
+# Displaying the results
+
+To display the results from the tree model created. The cross validation results help in choosing the tree size that minimizes the cross validated error -- that is displayed in the _xerror_ column.
+
+```{r}
+
+printcp(fit) # display the results 
+plotcp(fit) # visualize cross-validation results 
+
+```
+
+
+The command _summary_ provides the summary of the tree along with the splits.  
+
+```{r}
+
+summary(fit) # detailed summary of splits
+
+```
+
+To visualize the tree, it takes the output _fit_ that was run in the previous step. It runs the _plot()_ command with the _fit_ parameter. Notice that the tree constructed with larger set is much different from what we generated with just the four features. 
+
+```{r}
+
+# plot tree 
+plot(fit, uniform=TRUE, main="Pregnancy Decision Tree")
+text(fit, use.n=TRUE, all=TRUE, cex=.8)
+
+```
+
+As you see, constructing a tree in R using recursive partioning algorithm is simple.
+
+Entire code from above
+
+```{r eval = FALSE}
+
+library(xlsx) #Loading the package needed to read Excel file
+library(rpart) #Loading the package needed to construct and prune trees
+
+DIRNAME <- "/Users/rvijayaraghavan/Desktop/rajesh/Personal/Teaching/DataDrivenSrikantClass/"
+XLFILENAME <- "03 Assignment Workbook - Regression_10-6.xlsx"
+FILENAME <- paste0(DIRNAME,XLFILENAME)
+lecture5data <- read.xlsx(FILENAME, sheetName="Training Data")
+
+
+lecture5data$Male <- ifelse(lecture5data$Implied.Gender == "M", 1, 0)
+lecture5data$Female <- ifelse(lecture5data$Implied.Gender == "F", 1, 0)
+lecture5data$Home <- ifelse(lecture5data$Home.Apt..PO.Box == "H", 1, 0)
+lecture5data$Apt <- ifelse(lecture5data$Home.Apt..PO.Box == "A", 1,0)
+
+fit <- rpart(PREGNANT ~ Birth.Control + Feminine.Hygiene  +  Folic.Acid + Prenatal.Vitamins ,
+    method="class", data=lecture5data)
+
+printcp(fit) # display the results 
+plotcp(fit) # visualize cross-validation results 
+
+summary(fit) # detailed summary of splits
+
+plot(fit, uniform=TRUE, main="Pregnancy Decision Tree")
+text(fit, use.n=TRUE, all=TRUE, cex=.8)
+
+
+
+fit <- rpart(PREGNANT ~ Female + Male + Home + Apt + Pregnancy.Test + Birth.Control 
+                + Feminine.Hygiene  +  Folic.Acid + Prenatal.Vitamins + Prenatal.Yoga + 
+                  Body.Pillow + Ginger.Ale + Sea.Bands + Stopped.buying.ciggies + 
+                  Cigarettes + Smoking.Cessation + Stopped.buying.wine + 
+                  Wine + Maternity.Clothes,
+    method="class", data=lecture5data)
+
+
+printcp(fit) # display the results 
+plotcp(fit) # visualize cross-validation results 
+
+summary(fit) # detailed summary of splits
+
+plot(fit, uniform=TRUE, main="Pregnancy Decision Tree")
+text(fit, use.n=TRUE, all=TRUE, cex=.8)
+
+```
