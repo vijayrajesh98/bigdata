@@ -1,0 +1,304 @@
+---
+title: "BDCT - Lecture 2"
+output: pdf_document
+---
+
+
+# Clustering using R
+
+This tutorial will introduce clustering technique in R. This will follow the same recipe that was in the study guide that used Excel. It will touch upon the Wine dataset. R is powerful statistical package. Although the commands may look complicated if you are a beginner, they provide solid training of the basics that you could use to build on the future big data applications. 
+
+This tutorial is closely adopted to the Excel guide. As with any program, there are multiple ways to get at the answer - including simpler versions. This program is not necessarily the simplest, although illustrates the flexibility with R. The key take away is to gets hand on experience using R.
+
+# Lecture 2 - Clustering Wine data
+
+Recall, the business question in the case is a company that is focused on running promotions for its customers. The question is how would it segment the customers to decide on the type of offers it would promote. The data that was provided is on the deals offered last quarter, and the transactions that the customers purchased. They are in the _OfferInformation_ and _Transactions_ worksheet in the data Excel file. 
+
+There are  $100$ customers you are looking to segment, and you have $324$ transactions between them. 
+
+The outline of the program document is as follows: first the file is loaded in to R, followed by the analysis performed with the dataset. Then we work to see the results from the kmeans, and finally we look into plotting the clusters along with silhouetting. 
+
+
+## Loading the Excel files in R
+
+In the first step let us load packages in to R. R, by default, comes with many of the standard packages. Packages are collection of functions in R that are stored in what is referred to a library. There are many other packages available that would need to be initially downloaded and installed in the machine through some simple commands. Once they are installed, they would need to be loaded into the session to use it. These packages increase the statistical capacity of R, and also is an active part of the open source programming community through [CRAN](https://cran.r-project.org/web/packages/).
+
+For e.g., to install a package the following command is used:
+
+```{r eval = FALSE}
+
+install.packages("xlsx")
+install.packages("rpart")
+install.packages("tidyr")
+install.packages("ggplot2")
+install.packages("dplyr")
+
+```
+
+To load the installed packages in to the particular R session:
+
+```{r}
+
+library(xlsx) #Loading the package needed to read Excel file
+library(rpart) #Loading the package needed to construct and prune trees
+library(dplyr)#R package to quickly join datasets
+library(tidyr)
+library(ggplot2)
+# Uses logic from http://rpubs.com/hrbrmstr/customer-segmentation-r
+# Also refer https://rstudio-pubs-static.s3.amazonaws.com/33876_1d7794d9a86647ca90c4f182df93f0e8.html
+
+```
+
+If the packages are already installed, then load them in R using. Note, even if you have installed the package earlier, it would need to be loaded in order to use its functions.
+
+
+
+## Reading the Excel file
+
+We read the Excel data that was provided into the data frame _lecture2data_ . The variable name _DIRNAME_ stores the directory, and _XLFILENAME_ contains the file name in which the excel file is on my computer. The variable _FILENAME_ stores the name of the absolute file name. We also store the number of clusters we will be using for our analysis. This can be changed depending on the analysis that would be performed. 
+
+```{r}
+
+DIRNAME <- "/Users/rvijayaraghavan/Desktop/rajesh/Personal/Teaching/DataDrivenSrikantClass/"
+XLFILENAME <- "ClusteringWorkbook.xlsx"
+FILENAME <- paste0(DIRNAME,XLFILENAME)
+NUMCLUSTERS <- 4
+
+```
+
+Reading the _OfferInformation_ sheet in to Excel. Then we assign the names of the columns in to what they refer to. This is to just simplify the conventions and make the naming more easy to refer in the future. So the command _colnames(lecture2data.offers)_ is asking R to update the column names of the data frame read in the prior step.
+
+```{r}
+
+# Read the offer information dataset.
+lecture2data.offers <- read.xlsx(FILENAME, sheetName="OfferInformation")
+colnames(lecture2data.offers) <- c("offerid", "campaign", "varietal", 
+                                   "minqty", "discount", "origin", "pastpeak")
+
+```
+
+Reading the _Transactions_ sheet in to Excel. Notice the sheet itself has some extra text, so the read data contains other text that is not related to the dataset. These have to be removed and you can see this starting from third column in the data, running in to the fifth column. That would leave us with two columns for the _customername_ and _offerid_. The code below performs these operation.
+
+```{r}
+
+# Read the transaction information dataset.
+
+lecture2data.transactions <- read.xlsx(FILENAME, 
+                                       sheetName="Transactions") ##reading the transactions worksheet. 
+
+lecture2data.transactions <- lecture2data.transactions[ -c(3:5) ] ##remove unwanted columns. In this case it is columns 3 to 5.
+
+colnames(lecture2data.transactions) <- c("customername", 
+                                         "offerid") ##set column names to customername, and offerid. 
+
+```
+
+At this point we have read in the two sheets, but have not joined them as yet.
+
+The next step is creating the vector of $1$ and $0$ for the offer that was taken by the customer. This was created in Excel using pivot tables. We accomplish this using a number of steps. In the first step, we create a new column _isoffer_ in the _Transactions_ that takes a value $1$. Then we merge the dataset offer and transaction information. We then set every other value to $0$ for the offers that was not taken. That is, we first set the value $1$, and then spread this value across other transactions so that other values are $0$. At this point, we use the vectors of values that we just need for our analysis. 
+
+```{r}
+#initialize the variables
+
+clustering.vector.inp <- NULL
+clustering.vector <- NULL
+clustering.vector.dataset <- NULL
+
+
+# set the variable isoffer to 1. This is the first step in setting 1 for the offer corresponding to the customer.
+lecture2data.transactions$isoffer <- 1
+
+# Now let us link the two sheets, and store this in the dataset called clustering.vector.dataset
+clustering.vector.dataset <- dplyr::left_join(lecture2data.transactions, lecture2data.offers)
+head(clustering.vector.dataset) ##look at the first five elements of the dataset.
+
+clustering.vector <- clustering.vector.dataset[,(1:3)] ##take the first three columns that are sufficient for our purpose.
+head(clustering.vector)
+
+clustering.vector <-  tidyr::spread(clustering.vector,offerid,isoffer) ##spread the value of 1 across other transactions. The ones that do not have a transaction for the customer, are stored at Not Available i.e., NA at this point. But remember in our case, we have it set to zero. 
+clustering.vector [is.na(clustering.vector )] <- 0
+
+nrow(clustering.vector) #number of rows for input vector
+ncol(clustering.vector) #number of columns
+
+```
+
+You will see there are $100$ rows that correspond to the customers, and 32 offers in all. 
+
+## Performing K Means
+
+After creating the merged data set, we are ready to apply the kmeans algorithm in R. The command in R is _kmeans_. This function takes the argument of all columns that we would run the similarity measures on. The R _kmeans_ command takes only numeric vectors -- so in our case it would be just the 32 point (dimension) vector of $1$s and $0$s that correspond to the offers made by all the customers. These corresponds to cells $L2$ to $DG333$ in the Excel workbook in the _4MC_ sheet that was done in class.   
+
+Similarly in our case, that would meanin the data set we created, the first column that identifies the index of the customer alone has to be removed. Note that we assigned _NUMCLUSTERS_ to $4$ earlier in our program.  
+
+The R command to generate kmeans is _kmeans()_ . And  _clusering.vector_ has the input data, along with the index of the customer. 
+
+```{r eval = FALSE}
+
+kmeans.result <- kmeans(clustering.vector.inp,NUMCLUSTERS)
+
+```
+
+The results from the kmeans are stored in the variable _kmeans.result_ . The _kmeans_ also returns other statistics, including the clusters that were generated for each of the customers.  They are accessed specifying the command corresponding to the variable that we need such as cluster:  _kmeans.result\$cluster_, center using : _kmeans.result\$centers_ . For the full list refer to the output that is run by calling the output _kmeans.result_. 
+
+```{r}
+
+set.seed(1234) ##set so that the centroids generated through kmeans dont flip after every run in one session. 
+
+clustering.vector.inp <- clustering.vector[,-1] #input for kmeans, all columns apart from the first-column in clustering.vector. This corresponds to cells L2 to DG333 in the Excel workbook that was done in class. 
+
+head(clustering.vector.inp)
+
+kmeans.result <- kmeans(clustering.vector.inp,NUMCLUSTERS)
+
+kmeans.result
+
+```
+
+Let us see a barplot to see how many customers are segmented to each of the clusters. We use the command _barplot_ for the purpose. First, to show the statistics of the clusters that are assigned:
+
+```{r}
+
+tab1 <- table(kmeans.result$cluster) #to show statistics of how the clusters are assigned across customers. 
+tab1 # show the clusters
+barplot(tab1) #to show a bar plot with the result from above. 
+
+```
+
+Note that the original input that was passed as argument to the _kmeans_ function was just the vector of $0$s and $1$s. For e.g.,
+
+```{r}
+
+head(clustering.vector.inp)
+
+```
+
+To add more context, we need to merge the clusters to this and the corresponding customers. That will allow us to easily see how the customers look, and the connection between them.
+
+```{r}
+# series of steps to join the results from the kmeans -- that is the cluster name to the corresponding customer name. 
+
+
+clustering.vector <- merge(clustering.vector,kmeans.result$cluster , by=0, all=TRUE) 
+names(clustering.vector)[names(clustering.vector) == 'y'] <- 'cluster'
+clustering.vector <- left_join(clustering.vector,clustering.vector.dataset) #joining the two dataset using customername column. 
+
+```
+
+Let us now see the customers in each of the clusters. We use the command _filter_ along with specification of the cluster name. So for example _filter(clustering.vector, cluster == 1)_ returns all rows that have cluster value as $1$, that is all customers who are in cluster $1$. For cluster $1$, we show the entire data set to give an understanding of easy to interpret how similar they are. Then we show the customer name alone for the corresponding cluster. 
+
+
+```{r}
+
+cluster.show <- filter(clustering.vector, cluster == 1)
+
+cluster.show ##give the entire set of columns based on filtered by cluster 1. This shows all transactions by the corresponding cluster. Note that there are 324 transactions between 100 customers. 
+
+cluster.show$customername ##gives just the customer name from the above.
+
+## Similarly repeat for customer 2
+cluster.show <- filter(clustering.vector, cluster == 2)
+cluster.show$customername
+
+## Similar for customer 3
+cluster.show <- filter(clustering.vector, cluster == 3)
+cluster.show$customername
+
+## Similar for customer 4
+cluster.show <- filter(clustering.vector, cluster == 4)
+cluster.show$customername
+
+```
+
+The above commands give us a good sense of the customers who were in different clusters, thus helping the business decisions. It gives a simple way to understand the features that make them similar. 
+
+
+## Within cluster estimates
+
+Recall that we also calculated within cluster sum of squares to get an understanding of their fit. _kmeans_ also returns variable _withinss_ with the corresponding values. That is to get the vector of with-in cluster of the sum of squares, use the _$withinss_ value that is returned. This returns sum of squares as one component per cluster. This is accessed using the following command.
+
+```{r}
+
+kmeans.result$withinss
+
+```
+
+# Advanced -- Graphics and Silhouette
+
+In the following section, we will discuss some graphics option as to how would one would plot the output from the clusters. These commands are somewhat advanced, but give a sense of the options available in R. The key to note is that amount of code that is needed to get the output. Usually it is few lines that give you robust set of results while prototyping. 
+
+
+## Plotting output
+
+First let us install the packages that we would need for graphics options. We illustrate two different methods of plotting the output, and include two packages that are specifically used for this purpose. If you dont have the packages already installed, run the following two lines of code to install and then load them. If you are running the .Rmd file, replace _{r eval = FALSE}_ with _{r}_ .
+
+```{r eval = FALSE}
+
+install.packages('cluster')
+devtools::install_github("sinhrks/ggfortify")
+                         
+```
+
+Using the _cluster_ package.
+
+```{r}
+
+library(cluster)
+clusplot(clustering.vector.inp, kmeans.result$cluster, main='2D representation of the Cluster solution', color=TRUE, shade=TRUE, labels=2, lines=0)
+
+```
+
+Using the _ggfortify_ package.
+
+```{r}
+
+library(ggfortify)
+autoplot(kmeans.result, data=clustering.vector.inp, frame=TRUE, frame.type='norm')
+
+```
+
+## Silhouetting
+
+In the next step, we run the _kmeans_ algorithm multiple times and see how the silhouette value looks like. This will help us to give an idea of the $K$ that we would pick. We repeat this for all values from $2$ to $10$. That is we see the siluoette values for each cluster between $2$ to $10$. 
+
+We run the program in the form of a loop using the _for_ statement in R. The following statement illustrates a loop. In this case,  the program runs the code between the pair of { and }, for each value of $i$ from  $2$ to $MAX$. 
+
+```{r eval = FALSE}
+
+for (i in 2:MAX) ##run the loop from 2 to MAX. i value gets incremented in each iteration. 
+
+```
+
+The idea in our case is that we run _kmeans_ algorithm for number of clusters = $2$, calculate the silouette value. Then we run the program for number of cluster = $3$, calculate the silhouette value, and we keep repeating this for all values until $MAX$. In our case, we set $MAX$ to $10$ but that can be changed to any value. In that way, one can evaluate what would be a good cluster to pick from between $2$ and $10$ depending on the silhouette value. 
+
+
+```{r}
+
+MAX <- 10 #Maximum number of clusters to try
+sil <- NULL
+
+for (i in 2:MAX) #Loop runs for all value of i between 2 and MAX. 
+{
+      temp.kmeans <- kmeans(clustering.vector.inp, 
+                            centers=i) #Performs K-means clustering for the corresponding value of i. 
+      
+      temp.clusters <- temp.kmeans$cluster #get the clusters from the output. 
+      
+      temp.silval <- silhouette(temp.clusters,
+                                dist(clustering.vector.inp)) # calculate the silhouette value and store it in the temp.silval.
+      
+      sil[i] <- mean(temp.silval[,3]) #store the mean silhouette value that is used for plotting the value in the next step. 
+}
+
+```
+
+## Plotting the silhouette values
+
+Finally, plot the silhouette values that was created in the previous step:
+
+```{r}
+
+plot(1:MAX, sil)
+lines(1:MAX, sil) 
+
+```
